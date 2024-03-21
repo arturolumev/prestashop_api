@@ -6,6 +6,57 @@ const parser = new xml2js.Parser({ explicitArray: false });
 const app = express();
 const port = 3099;
 
+////////////////////////////////
+const http = require("http");
+const sql = require("mssql");
+
+// Configuración de la conexión a la base de datos
+const config = {
+  user: "kuky",
+  password: "Kf123456",
+  server: "3.144.237.208",
+  database: "prueba_kflor",
+  options: {
+    encrypt: false, // Si estás utilizando Azure, establece esto en true
+  },
+};
+
+async function insertarProductoSiNoExiste(producto) {
+  try {
+    // Conectar a la base de datos
+    await sql.connect(config);
+
+    // Verificar si el producto ya existe en la base de datos por su código alterno
+    const existeProducto = await sql.query(
+      `SELECT COUNT(*) AS count FROM producto WHERE CodigoAlterno = '${producto.CodigoAlterno}'`
+    );
+
+    // Si existe el producto, mostrar un mensaje y continuar
+    if (existeProducto.recordset[0].count > 0) {
+      console.log(
+        `El producto con código alterno ${producto.CodigoAlterno} ya existe en la base de datos. Continuando con el siguiente.`
+      );
+      return;
+    }
+
+    // Si no existe el producto, insertarlo en la base de datos
+    const result = await sql.query(
+      `INSERT INTO producto (EmpresaID, Descripcion, Abreviatura, Codigo, GrupoID, UMUnitarioID, StockMaximo, StockMinimo, MarcaID, Modelo, Peso, Ubicacion, Area, CodigoBarra, CodigoAlterno, Estado, UsuarioID, FechaCreacion, FechaModificacion, Idodoo, Precio, Habilitado) 
+       VALUES (${producto.EmpresaId}, '${producto.Descripcion}', '${producto.Abreviatura}', '${producto.Codigo}', '${producto.GrupoId}', ${producto.UMUnitarioId}, ${producto.StockMaximo}, ${producto.StocMinimo}, ${producto.MarcaId}, '${producto.Modelo}', ${producto.Peso}, '${producto.Ubicacion}', ${producto.Area}, '${producto.CodigoBarra}', '${producto.CodigoAlterno}', '${producto.Estado}', ${producto.UsuarioID}, '${producto.FechaCreacion}', '${producto.FechaModificacion}', ${producto.Idodoo}, ${producto.Precio}, ${producto.Habilitado})`
+    );
+
+    console.log(
+      `Producto con código alterno ${producto.CodigoAlterno} insertado correctamente.`
+    );
+  } catch (error) {
+    console.log(error);
+    throw error;
+  } finally {
+    // Cerrar la conexión
+    await sql.close();
+  }
+}
+//----------------------------------------------------------------
 // Endpoint para obtener productos desde PrestaShop
 // Endpoint para obtener los primeros 10 productos desde PrestaShop
 app.get("/api/products", async (req, res) => {
@@ -16,7 +67,7 @@ app.get("/api/products", async (req, res) => {
         params: {
           display: "full",
           output_format: "JSON",
-          limit: 10,
+          // limit: 10,
         },
         headers: {
           Authorization: "ZBR3Q8MEZ3KC16C7Z5CMYYD9V1VFCT3T",
@@ -27,16 +78,17 @@ app.get("/api/products", async (req, res) => {
     // Extraer la información específica de cada producto
     const productsInfo = response.data.products.map((product) => {
       return {
-        //EmpresaId: product.name[0].value,
+        EmpresaId: 1,
         //ProductoId: product.reference,
         Descripcion: product.meta_title[0].value,
         Abreviatura: product.reference,
-        //GrupoId: "no tiene una categoria especificada", 
-        
-        // id: 050101 es PRESTASHOP 
+        Codigo: "",
+        GrupoId: "050101",
+
+        // id: 050101 es PRESTASHOP
         // guardar por nombre no por id
-        
-        //UMUnitarioId: "no tiene",
+
+        UMUnitarioId: 138.00015,
         StockMaximo: 0,
         StocMinimo: 0,
         MarcaId: 124,
@@ -55,6 +107,11 @@ app.get("/api/products", async (req, res) => {
         Habilitado: 1,
       };
     });
+
+    // // Insertar cada producto si no existe en la base de datos
+    // for (const producto of productsInfo) {
+    //   await insertarProductoSiNoExiste(producto);
+    // }
 
     res.json(productsInfo);
   } catch (error) {
