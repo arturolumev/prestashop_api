@@ -21,43 +21,6 @@ const config = {
   },
 };
 
-async function insertarProductoSiNoExiste(producto) {
-  try {
-    // Conectar a la base de datos
-    await sql.connect(config);
-
-    // Verificar si el producto ya existe en la base de datos por su código alterno
-    const existeProducto = await sql.query(
-      `SELECT COUNT(*) AS count FROM producto WHERE CodigoAlterno = '${producto.CodigoAlterno}'`
-    );
-
-    // Si existe el producto, mostrar un mensaje y continuar
-    if (existeProducto.recordset[0].count > 0) {
-      console.log(
-        `El producto con código alterno ${producto.CodigoAlterno} ya existe en la base de datos. Continuando con el siguiente.`
-      );
-      return;
-    }
-
-    // Si no existe el producto, insertarlo en la base de datos
-    const result = await sql.query(
-      `INSERT INTO producto (EmpresaID, Descripcion, Abreviatura, Codigo, GrupoID, UMUnitarioID, StockMaximo, StockMinimo, MarcaID, Modelo, Peso, Ubicacion, Area, CodigoBarra, CodigoAlterno, Estado, UsuarioID, FechaCreacion, FechaModificacion, Idodoo, Precio, Habilitado) 
-       VALUES (${producto.EmpresaId}, '${producto.Descripcion}', '${producto.Abreviatura}', '${producto.Codigo}', '${producto.GrupoId}', ${producto.UMUnitarioId}, ${producto.StockMaximo}, ${producto.StocMinimo}, ${producto.MarcaId}, '${producto.Modelo}', ${producto.Peso}, '${producto.Ubicacion}', ${producto.Area}, '${producto.CodigoBarra}', '${producto.CodigoAlterno}', '${producto.Estado}', ${producto.UsuarioID}, '${producto.FechaCreacion}', '${producto.FechaModificacion}', ${producto.Idodoo}, ${producto.Precio}, ${producto.Habilitado})`
-    );
-
-    console.log(
-      `Producto con código alterno ${producto.CodigoAlterno} insertado correctamente.`
-    );
-  } catch (error) {
-    console.log(error);
-    throw error;
-  } finally {
-    // Cerrar la conexión
-    await sql.close();
-  }
-}
-//----------------------------------------------------------------
-// Endpoint para obtener productos desde PrestaShop
 // Endpoint para obtener los primeros 10 productos desde PrestaShop
 app.get("/api/products", async (req, res) => {
   try {
@@ -80,7 +43,7 @@ app.get("/api/products", async (req, res) => {
       return {
         EmpresaId: 1,
         //ProductoId: product.reference,
-        Descripcion: product.meta_title[0].value,
+        Descripcion: product.name[0].value,
         Abreviatura: product.reference,
         Codigo: "",
         GrupoId: "050101",
@@ -108,12 +71,7 @@ app.get("/api/products", async (req, res) => {
       };
     });
 
-    // // Insertar cada producto si no existe en la base de datos
-    // for (const producto of productsInfo) {
-    //   await insertarProductoSiNoExiste(producto);
-    // }
-
-    res.json(productsInfo);
+    res.json(productsInfo); //productsInfo
   } catch (error) {
     console.error(error);
     res.status(500).json({
